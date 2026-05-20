@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hall of Fame | Nexus Quiz</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="nav">
+    <div class="nav-links">
+        <a href="dashboard.html" class="brand"><i class="fa-solid fa-crown"></i> Nexus Quiz</a>
+        <a href="dashboard.html"><i class="fa-solid fa-house"></i> Dashboard</a>
+        <a href="leaderboard.html" class="active"><i class="fa-solid fa-trophy"></i> Leaderboard</a>
+    </div>
+    <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+</div>
+
+<div class="container">
+    <div class="text-center mb-4">
+        <h2 class="gold-text"><i class="fa-solid fa-ranking-star"></i> Hall of Fame</h2>
+        <p style="color: var(--text-secondary);">The greatest challengers across all trials.</p>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="leaderboardChart" width="400" height="200"></canvas>
+    </div>
+    
+    <hr>
+    
+    <h3 class="mb-4"><i class="fa-solid fa-list-ol"></i> Global Rankings</h3>
+    <ul id="leaderboard-list"></ul>
+</div>
+
+<script src="app.js"></script>
+<script>
+    checkAuth();
+
+    async function loadLeaderboard() {
+        const res = await fetch(`${API_URL}/result/leaderboard`, {headers: getAuthHeaders()});
+        const results = await res.json();
+        
+        const list = document.getElementById('leaderboard-list');
+        let labels = [];
+        let scores = [];
+
+        if (results.length === 0) {
+            list.innerHTML = `<li style="justify-content: center; color: var(--text-secondary);">No scores yet. Be the first!</li>`;
+        }
+
+        results.forEach((r, idx) => {
+            // Rank styling
+            let rankHtml = `<span style="font-size: 24px; font-weight: 800; color: var(--text-secondary); width: 40px;">#${idx+1}</span>`;
+            if (idx === 0) rankHtml = `<span style="font-size: 24px; font-weight: 800; color: #FFD700; width: 40px;"><i class="fa-solid fa-medal"></i></span>`;
+            else if (idx === 1) rankHtml = `<span style="font-size: 24px; font-weight: 800; color: #C0C0C0; width: 40px;"><i class="fa-solid fa-medal"></i></span>`;
+            else if (idx === 2) rankHtml = `<span style="font-size: 24px; font-weight: 800; color: #CD7F32; width: 40px;"><i class="fa-solid fa-medal"></i></span>`;
+
+            // Populate List
+            const li = document.createElement('li');
+            const username = r.user?.username || 'Unknown';
+            li.innerHTML = `
+                <div style="display:flex; align-items:center;">
+                    ${rankHtml}
+                    <div class="li-content" style="margin-left:15px;">
+                        <span class="li-title">${username}</span>
+                        <span class="li-subtitle">Trial: ${r.quiz?.name || 'N/A'}</span>
+                    </div>
+                </div>
+                <div class="li-score">${r.score} <span style="font-size:12px; color:var(--text-secondary);">pts</span></div>
+            `;
+            list.appendChild(li);
+            
+            // Populate Chart Data
+            labels.push(username + " (" + (r.quiz?.name || "N/A") + ")");
+            scores.push(r.score);
+        });
+
+        // Add Chart
+        Chart.defaults.color = '#a1a1aa';
+        Chart.defaults.font.family = "'Outfit', sans-serif";
+        
+        const ctx = document.getElementById('leaderboardChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Score',
+                    data: scores,
+                    backgroundColor: 'rgba(212, 175, 55, 0.7)',
+                    borderColor: 'rgba(212, 175, 55, 1)',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    hoverBackgroundColor: 'rgba(235, 208, 118, 0.9)'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(63, 63, 70, 0.5)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    loadLeaderboard();
+</script>
+</body>
+</html>

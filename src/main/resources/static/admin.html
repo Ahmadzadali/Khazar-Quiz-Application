@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quizmaster Console | Nexus Quiz</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="nav">
+    <div class="nav-links">
+        <a href="admin.html" class="brand"><i class="fa-solid fa-crown"></i> Nexus Quiz Console</a>
+    </div>
+    <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+</div>
+
+<div class="container">
+    <div class="text-center mb-4">
+        <h2 class="gold-text"><i class="fa-solid fa-wand-magic-sparkles"></i> Quizmaster Dashboard</h2>
+    </div>
+
+    <div class="chart-container">
+        <h3 class="mb-4"><i class="fa-solid fa-folder-plus"></i> Create New Trial</h3>
+        <div class="form-group">
+            <label>Trial Name</label>
+            <input type="text" id="q-name" placeholder="e.g. History of the Ancients">
+        </div>
+        <div class="form-group">
+            <label>Category Identifier</label>
+            <input type="text" id="q-cat" placeholder="e.g. history">
+        </div>
+        <div class="form-group">
+            <label>Time Limit (Seconds)</label>
+            <input type="number" id="q-time" placeholder="300" value="300">
+        </div>
+        <button onclick="createQuiz()"><i class="fa-solid fa-plus"></i> Forge Trial</button>
+    </div>
+
+    <div class="chart-container mt-4">
+        <h3 class="mb-4"><i class="fa-solid fa-puzzle-piece"></i> Add Knowledge to Trial</h3>
+        <div class="form-group">
+            <label>Select Target Trial</label>
+            <select id="p-quizId"></select>
+        </div>
+        <div class="form-group">
+            <label>The Question</label>
+            <input type="text" id="qq-text" placeholder="What is the capital of...">
+        </div>
+        <div class="form-group">
+            <label>Option A</label>
+            <input type="text" id="qq-a" placeholder="Answer A">
+        </div>
+        <div class="form-group">
+            <label>Option B</label>
+            <input type="text" id="qq-b" placeholder="Answer B">
+        </div>
+        <div class="form-group">
+            <label>Option C</label>
+            <input type="text" id="qq-c" placeholder="Answer C">
+        </div>
+        <div class="form-group">
+            <label>Option D</label>
+            <input type="text" id="qq-d" placeholder="Answer D">
+        </div>
+        <div class="form-group">
+            <label>Correct Answer (A, B, C, or D)</label>
+            <input type="text" id="qq-ans" placeholder="e.g. A">
+        </div>
+        <button onclick="addQuestion()"><i class="fa-solid fa-check"></i> Add Knowledge</button>
+    </div>
+
+    <hr>
+    
+    <h3 class="mb-4"><i class="fa-solid fa-users-viewfinder"></i> All Challenger Results</h3>
+    <ul id="results-list"></ul>
+</div>
+
+<script src="app.js"></script>
+<script>
+    checkAuth('ADMIN');
+
+    async function loadQuizzes() {
+        const res = await fetch(`${API_URL}/quiz`, {headers: getAuthHeaders()});
+        const quizzes = await res.json();
+        const select = document.getElementById('p-quizId');
+        select.innerHTML = '';
+        quizzes.forEach(q => {
+            const opt = document.createElement('option');
+            opt.value = q.id;
+            opt.innerText = q.name + " (" + q.category + ")";
+            select.appendChild(opt);
+        });
+    }
+
+    async function createQuiz() {
+        const name = document.getElementById('q-name').value;
+        const cat = document.getElementById('q-cat').value;
+        const limit = document.getElementById('q-time').value;
+        await fetch(`${API_URL}/quiz`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({name: name, category: cat, timeLimitInSeconds: parseInt(limit)})
+        });
+        alert('Trial Forged Successfully!');
+        loadQuizzes();
+    }
+
+    async function addQuestion() {
+        const qzId = document.getElementById('p-quizId').value;
+        const payload = {
+            questionText: document.getElementById('qq-text').value,
+            optionA: document.getElementById('qq-a').value,
+            optionB: document.getElementById('qq-b').value,
+            optionC: document.getElementById('qq-c').value,
+            optionD: document.getElementById('qq-d').value,
+            correctAnswer: document.getElementById('qq-ans').value,
+            quiz: {id: parseInt(qzId)}
+        };
+        await fetch(`${API_URL}/question`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+        alert('Knowledge Added Successfully!');
+    }
+
+    async function loadResults() {
+        const res = await fetch(`${API_URL}/result`, {headers: getAuthHeaders()});
+        const results = await res.json();
+        const list = document.getElementById('results-list');
+        results.forEach(r => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="li-content">
+                    <span class="li-title">Challenger ID: ${r.user?.id}</span>
+                    <span class="li-subtitle">Trial: ${r.quiz?.name}</span>
+                </div>
+                <div class="li-score">${r.score} <span style="font-size:12px; color:var(--text-secondary);">pts</span></div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    loadQuizzes();
+    loadResults();
+</script>
+</body>
+</html>

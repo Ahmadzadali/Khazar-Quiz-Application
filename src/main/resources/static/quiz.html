@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trial in Progress | Nexus Quiz</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="container">
+    <div class="flex-between mb-4">
+        <h2 id="quiz-title" class="gold-text"><i class="fa-solid fa-scroll"></i> Trial of Knowledge</h2>
+        <div class="timer" id="timer"><i class="fa-solid fa-hourglass-half"></i> Loading...</div>
+    </div>
+    
+    <div class="progress-bar-container" style="background:var(--surface-light); height: 8px; border-radius: 4px; margin-bottom: 30px; overflow: hidden;">
+        <div id="progress-bar" style="background:var(--gold); height: 100%; width: 100%; transition: width 1s linear;"></div>
+    </div>
+
+    <div id="questions-container"></div>
+    
+    <button id="submit-btn" class="hidden mt-4" onclick="submitQuiz()" style="font-size: 18px; padding: 16px;"><i class="fa-solid fa-check-double"></i> Conclude Trial</button>
+</div>
+
+<script src="app.js"></script>
+<script>
+    checkAuth('USER');
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const category = urlParams.get('category');
+    
+    let questions = [];
+    let quizId = null;
+    let timeLimit = 300;
+    let totalTime = 300;
+    let timerInterval = null;
+
+    async function loadQuiz() {
+        const res = await fetch(`${API_URL}/quiz/start/${category}`, {headers: getAuthHeaders()});
+        if(!res.ok) {
+            alert('Quiz not found');
+            window.location.href = 'dashboard.html';
+            return;
+        }
+        questions = await res.json();
+        if(questions.length > 0) {
+            quizId = questions[0].quiz?.id;
+            timeLimit = questions[0].quiz?.timeLimitInSeconds || 300;
+            totalTime = timeLimit;
+        }
+        renderQuestions();
+        startTimer();
+    }
+
+    function renderQuestions() {
+        const container = document.getElementById('questions-container');
+        questions.forEach((q, idx) => {
+            const div = document.createElement('div');
+            div.className = 'question-card';
+            div.innerHTML = `
+                <h4><span style="color:var(--text-secondary); margin-right:10px;">${idx+1}.</span> ${q.questionText}</h4>
+                <div class="options-grid">
+                    <label class="option-label" onclick="selectOption(this, 'q-${q.id}')">
+                        <input type="radio" name="q-${q.id}" value="A">
+                        <span class="checkmark"></span>
+                        A. ${q.optionA}
+                    </label>
+                    <label class="option-label" onclick="selectOption(this, 'q-${q.id}')">
+                        <input type="radio" name="q-${q.id}" value="B">
+                        <span class="checkmark"></span>
+                        B. ${q.optionB}
+                    </label>
+                    <label class="option-label" onclick="selectOption(this, 'q-${q.id}')">
+                        <input type="radio" name="q-${q.id}" value="C">
+                        <span class="checkmark"></span>
+                        C. ${q.optionC}
+                    </label>
+                    <label class="option-label" onclick="selectOption(this, 'q-${q.id}')">
+                        <input type="radio" name="q-${q.id}" value="D">
+                        <span class="checkmark"></span>
+                        D. ${q.optionD}
+                    </label>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+        document.getElementById('submit-btn').classList.remove('hidden');
+    }
+
+    function selectOption(labelElement, groupName) {
+        // Find all labels for this question and remove selected class
+        const allLabels = document.querySelectorAll(`input[name="${groupName}"]`);
+        allLabels.forEach(input => {
+            input.parentElement.classList.remove('selected');
+        });
+        // Add selected class to the clicked one
+        labelElement.classList.add('selected');
+    }
+
+    function startTimer() {
+        const timerEl = document.getElementById('timer');
+        const progressEl = document.getElementById('progress-bar');
+        
+        timerInterval = setInterval(() => {
+            timeLimit--;
+            
+            // Update Text
+            const m = Math.floor(timeLimit / 60);
+            const s = timeLimit % 60;
+            timerEl.innerHTML = `<i class="fa-solid fa-hourglass-half"></i> ${m}:${s < 10 ? '0':''}${s}`;
+            
+            // Update Bar
+            const percentage = (timeLimit / totalTime) * 100;
+            progressEl.style.width = percentage + '%';
+            
+            if(timeLimit <= 60) {
+                timerEl.style.color = 'var(--danger)';
+                timerEl.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.4)';
+                progressEl.style.background = 'var(--danger)';
+            }
+
+            if(timeLimit <= 0) {
+                clearInterval(timerInterval);
+                submitQuiz();
+            }
+        }, 1000);
+    }
+
+    async function submitQuiz() {
+        clearInterval(timerInterval);
+        let score = 0;
+        questions.forEach(q => {
+            const selected = document.querySelector(`input[name="q-${q.id}"]:checked`);
+            if(selected && selected.value === q.correctAnswer) {
+                score += 10; // 10 points per correct answer
+            }
+        });
+        
+        const result = {
+            score: score,
+            user: { id: parseInt(getUserId()) },
+            quiz: { id: quizId }
+        };
+        
+        await fetch(`${API_URL}/result`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(result)
+        });
+        
+        alert(`Trial Concluded! Your earned ${score} points.`);
+        window.location.href = 'dashboard.html';
+    }
+
+    loadQuiz();
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Nexus Quiz</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+<div class="nav">
+    <div class="nav-links">
+        <a href="dashboard.html" class="brand"><i class="fa-solid fa-crown"></i> Nexus Quiz</a>
+        <a href="dashboard.html" class="active"><i class="fa-solid fa-house"></i> Dashboard</a>
+        <a href="leaderboard.html"><i class="fa-solid fa-trophy"></i> Leaderboard</a>
+    </div>
+    <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+</div>
+
+<div class="container">
+    <div class="text-center mb-4">
+        <h2 class="gold-text">Welcome back, Challenger!</h2>
+        <p style="color: var(--text-secondary);">Select a category to begin your trial.</p>
+    </div>
+
+    <div class="chart-container text-center" style="padding: 40px 20px;">
+        <h3 class="mb-4">Start a New Quiz</h3>
+        <select id="quiz-select" style="max-width: 400px; margin: 0 auto 20px auto;">
+            <option value="">Select a Quiz category...</option>
+        </select>
+        <button onclick="startQuiz()" style="max-width: 400px; margin: 0 auto;"><i class="fa-solid fa-play"></i> Enter Arena</button>
+    </div>
+
+    <hr>
+    
+    <div class="flex-between mb-4">
+        <h3><i class="fa-solid fa-clock-rotate-left"></i> Your Battle History</h3>
+    </div>
+    <ul id="results-list"></ul>
+</div>
+
+<script src="app.js"></script>
+<script>
+    checkAuth('USER');
+
+    async function loadQuizzes() {
+        const res = await fetch(`${API_URL}/quiz`, {headers: getAuthHeaders()});
+        const quizzes = await res.json();
+        const select = document.getElementById('quiz-select');
+        quizzes.forEach(q => {
+            const opt = document.createElement('option');
+            opt.value = q.category;
+            opt.innerText = q.name + " (" + q.category + ")";
+            select.appendChild(opt);
+        });
+    }
+
+    async function loadResults() {
+        const res = await fetch(`${API_URL}/result/user/${getUserId()}`, {headers: getAuthHeaders()});
+        const results = await res.json();
+        const list = document.getElementById('results-list');
+        
+        if (results.length === 0) {
+            list.innerHTML = `<li style="justify-content: center; color: var(--text-secondary);">No past results found. Play a quiz!</li>`;
+            return;
+        }
+
+        results.forEach(r => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="li-content">
+                    <span class="li-title">${r.quiz?.name || 'Unknown Quiz'}</span>
+                    <span class="li-subtitle">Category: ${r.quiz?.category || 'N/A'}</span>
+                </div>
+                <div class="li-score">${r.score} <span style="font-size:12px; color:var(--text-secondary);">pts</span></div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function startQuiz() {
+        const cat = document.getElementById('quiz-select').value;
+        if(cat) window.location.href = `quiz.html?category=${cat}`;
+    }
+
+    loadQuizzes();
+    loadResults();
+</script>
+</body>
+</html>
